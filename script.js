@@ -1,5 +1,6 @@
 console.log(localStorage.getItem("userId"));
 var page = document.getElementById("content");
+var loggedIn;
 
 if (localStorage.getItem("userId") !== null) {
     showLoggedinPage();
@@ -42,6 +43,8 @@ function showStartPage()
 
                         console.log("Ja de stämmer!");
                         localStorage.setItem("userId", json[i].id);
+                        localStorage.setItem("userName", json[i].name)
+                        loggedIn=true;
                     }
                     
                 }
@@ -61,7 +64,8 @@ function showStartPage()
 
 
     //Visa tillgängliga filmer
-    page.insertAdjacentHTML("beforeend",'<h2>Tillgängliga filmer</h2><div id="filmList"><button onclick="getAllMovies()" >få alla filmer</button></div>');
+    page.insertAdjacentHTML("beforeend","<h2> Tillgängliga filmer<h2><div id='filmList'></div>");
+    getAllMovies();
 
     //Registrera filmstudio
     page.insertAdjacentHTML("beforeend",'<div id="registerFilmstudio" class="registerFilmstudio"><h2>Registrera filmstudio</h2> Namn <input type="text" id="newUsername"> Lösenord <input type="password" id="newPassword"> <button id="register" onclick="">Registrera</button></div>');
@@ -96,8 +100,8 @@ function showLoggedinPage()
             return response.json();
         })
         .then(function (json) {
-
-            print = print + json[localStorage.getItem("userId")].name;
+           
+            print = print + localStorage.getItem("userName");
             page.insertAdjacentHTML("afterbegin", print);
 
         })
@@ -112,10 +116,8 @@ function showLoggedinPage()
     })
 
     //Listar alla filmer och ger möjlighet att hyra
-    page.insertAdjacentHTML("beforeend",'<h2>Tillgängliga filmer</h2><div id="filmList"><button id="rentButton" onclick="getAllMovies()">Få alla filmer</button></div>');
-
-    //lista av lånade filmer och möjlighet att lämna tillbaka
-    page.insertAdjacentHTML("beforeend", '<h2>Dina hyrda filmer</h2><div id="rentedFilmsList"><button id="getRentalsButton" onclick="getListOfRentedMovies()">Mina hyrda filmer</button><div>');
+    page.insertAdjacentHTML("beforeend","<h2> Tillgängliga filmer<h2><div id='filmList'></div>");
+    getAllMovies();
 }
 
 
@@ -160,24 +162,47 @@ function showLoggedinAdminPage()
 
 //lista av hyrda filmer för inloggad användare
 function getListOfRentedMovies(){
+    var rentedfilms;
+
     console.log("hämtar lista med hyrda filmer");
     var listOfRentedMovies = document.getElementById("rentedFilmsList");
     listOfRentedMovies.innerHTML ="";
 
+    
+    
     fetch('https://localhost:5001/api/rentedfilm')
     .then(response => response.json())
     .then(function(json) {
+        
+        var studioId = localStorage.getItem("userId");
         console.log(json);
-        console.log(localStorage.getItem("userId"));
-
-        for(i =0; i<json.length; i++)
+        console.log("localstorage" + localStorage.getItem("userId"));
+        console.log("studioid: " + studioId);
+        rentedfilms = json.filter(a=>a.studioId == studioId && a.returned == false);
+        
+    })
+    
+    fetch('https://localhost:5001/api/film')
+    .then(response => response.json())
+    .then(function(json){
+        console.log("printList", json)
+        
+        for(i =0; i<rentedfilms.length; i++)
         {
-            if(json[i].studioid == localStorage.getItem("userId") && json[i].returned == false)
+            var rentedMovie = rentedfilms[i].filmId;
+            for(i =0; i<json.length; i++)
             {
-                listOfRentedMovies.insertAdjacentHTML("beforeend", "<li>" + json[i].filmid + "</li> <button id='returnButton' onclick='returnMovie(" + json[i].id +")'>Lämna tillbaka</button>")
+                if (rentedMovie == json[i].id)
+                {
+                    listOfRentedMovies.insertAdjacentHTML("beforeend", "<li>" + json[i].name + " <button id='returnButton' onclick='returnMovie(" + json[i].id +")'>Lämna tillbaka</button></li>")   
+                }
+
             }
         }
+        
     })
+    .catch(err => console.log(err))
+    
 
 }
 
@@ -255,23 +280,43 @@ function getAllMovies()
         
         for (i =0; i<json.length; i++)
         {
-            console.log(json[i].name)
-            
-            //om inloggad
-            if (localStorage.getItem("userId") !== null) {
-                console.log("här är en film som kan hyras");
-                printList.insertAdjacentHTML("beforeend", "<li>" + json[i].name + "</li> <button id='rentButton' onclick='rentMovie(" + json[i].id +", 1)'>Hyr</button>")
-            } 
-            else //om inte inloggad
-            {
-                console.log("här är en film som inte kan hyras!");
-                printList.insertAdjacentHTML("beforeend", "<li>" + json[i].name + "</li>")
-            }
+
+                printList.insertAdjacentHTML("beforeend", "<li><button id='movieButton' onclick='showMoviePage("+json[i].id+",\""+ json[i].name +"\")'>" + json[i].name + "</button></li>") 
 
         }
     })
     .catch(err => console.log(err))
 
+}
+
+function showMoviePage(movieId, movieName)
+{
+    console.log("nu är vi i rätt funktion");
+
+    page.innerHTML = "";
+    page.insertAdjacentHTML("beforeend", "<h3>"+ movieName +"</h3> <div><button id='goBackButton' onclick='showStartPage()'> Gå tillbaka </button></div>");
+
+    //om inloggad
+    if(loggedIn)
+    {
+        page.insertAdjacentHTML("beforeend", "<button id='rentButton' onclick='rentMovie("+movieId+")'>Hyr</button>");
+    }
+
+    fetch('https://localhost:5001/api/rentedfilm')
+    .then(response => response.json())
+    .then(function(json) {
+        
+        var studioId = localStorage.getItem("userId");
+        console.log(json);
+        var activeRentals = json.filter(a => a.studioId == studioId && a.filmId == movieId && a.returned == false).length;
+
+        if (activeRentals>0)
+        {
+            page.insertAdjacentHTML("beforeend", "<button id='returnButton' onclick='returnMovie()'>Lämna tillbaka</button>");
+        }        
+    })
+
+    
 }
 //för att hämta alla trivias och skriva ut i konsollen
 function getAllTrivias() 
@@ -302,12 +347,13 @@ function postFilmstudio(studioName, studioPassword)
 }
 
 //hyr film
-function rentMovie(filmid, studioid) {
+function rentMovie(filmid) {
     console.log("renting movie!!", filmid)
+    var userId = parseInt(localStorage.getItem("userId"));
 
-    var data = {FilmId: filmid, StudioId: studioid, Returned: false};
+    var data = {FilmId: filmid, StudioId: userId};
 
-    fetch('https://localhost:5001/api/rentedfilm', {
+    fetch('https://localhost:5001/api/RentedFilm', {
         method: "POST",
         headers: {
             "Content-type":'application/json',
@@ -317,14 +363,18 @@ function rentMovie(filmid, studioid) {
     .then(response => response.json())
     .then(data => {
         console.log('Sucess', data)
+        page.innerHTML="";
+        page.insertAdjacentHTML("afterbegin", "<div id='isRentedMessage'>Filmen hyrs! HOLD ON! </div>");
+        setTimeout(() => { showLoggedinPage(); ; }, 2000);
+
     })
     .catch(err => console.log('Error: ', err))
 
 
 }
 
-function returnMovie(rentedfilmId){
-    console.log("lämnar tillbaka film", rentedfilmId);
+function returnMovie(movieId){
+    console.log("lämnar tillbaka film", movieId);
     var data = {Id: rentedfilmId, Returned: true}
 
     fetch('https://localhost:5001/api/rentedfilm/' + rentedfilmId, {
@@ -334,7 +384,6 @@ function returnMovie(rentedfilmId){
         }, 
         body: JSON.stringify(data),
     })
-    .then(response = response.json())
     .then(data => {
         console.log('Sucess', data)
     })
