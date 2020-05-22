@@ -17,5 +17,8 @@ header {
 }
 .bigButton {
     height: 20px;
-    
+
+}
+li {
+    text-decoration: none;
 }

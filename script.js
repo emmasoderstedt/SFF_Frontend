@@ -11,7 +11,6 @@ if (localStorage.getItem("userId") !== null) {
 
 //                                   START PAGE
 //------------------------------------------------------------------------------------------------------------------------
-
 function showStartPage() 
 {
     page.innerHTML = " ";
@@ -78,11 +77,10 @@ function showStartPage()
         password = document.getElementById("newPassword").value;
         console.log("knapp tryckt!")
         postFilmstudio(userName, password);
-        page.insertAdjacentHTML("beforeend", '<div><p id="registratedStudio">Studion är nu registrerad!</p></div>');
+        page.insertAdjacentHTML("beforeend", '<div><p id="registratedStudio">Studion är nu registrerad! Invänta verifiering. Bekräftelse skickas via mail. </p></div>');
 
     });
 }
-
 //------------------------------------------------------------------------------------------------------------------------
 
 //                                   LOGGED IN PAGE
@@ -118,22 +116,16 @@ function showLoggedinPage()
     page.insertAdjacentHTML("beforeend","<h2> Tillgängliga filmer<h2><div id='filmList'></div>");
     getAllMovies();
 }
-
-
-
-
 //------------------------------------------------------------------------------------------------------------------------
 
 //                                   ADMIN PAGE
 //------------------------------------------------------------------------------------------------------------------------
 
-
-
 function showLoggedinAdminPage() 
 {
     //tömmer sidan och hälsar välkommen
     page.innerHTML = "";
-    page.insertAdjacentHTML("afterbegin", "Välkommen Admin");
+    page.insertAdjacentHTML("afterbegin", "<h2>Välkommen Admin</h2>");
 
     //logga ut-knapp
     page.insertAdjacentHTML("beforeend", " <div> <button id= 'loggoutAdminButton'>Logga ut</button></div>");
@@ -145,101 +137,32 @@ function showLoggedinAdminPage()
     })
 
     //Lista alla uthyrningar
-    page.insertAdjacentHTML("beforeend",'<h2>Uthyrda filmer</h2><div id="rentList"><button onclick="getAllRentals()" >få alla uthyrningar</button></div>');
-    
-    //Lista alla filmklubbar som väntar på verifiering
-    page.insertAdjacentHTML("beforeend",'<h2>Verifiera filmstudio</h2><div id="studioList"><button onclick="getListOfUnverifiedStudios()" >verifiera studios</button></div>');
-    
-
-}
-
-//------------------------------------------------------------------------------------------------------------------------
-
-//                                  FUNCTIONS
-//------------------------------------------------------------------------------------------------------------------------
-
-
-//lista av hyrda filmer för inloggad användare
-function getListOfRentedMovies(){
-    var rentedfilms;
-
-    console.log("hämtar lista med hyrda filmer");
-    var listOfRentedMovies = document.getElementById("rentedFilmsList");
-    listOfRentedMovies.innerHTML ="";
-
-    
-    
-    fetch('https://localhost:5001/api/rentedfilm')
-    .then(response => response.json())
-    .then(function(json) {
-        
-        var studioId = localStorage.getItem("userId");
-        console.log(json);
-        console.log("localstorage" + localStorage.getItem("userId"));
-        console.log("studioid: " + studioId);
-        rentedfilms = json.filter(a=>a.studioId == studioId && a.returned == false);
-        
-    })
-    
-    fetch('https://localhost:5001/api/film')
-    .then(response => response.json())
-    .then(function(json){
-        console.log("printList", json)
-        
-        for(i =0; i<rentedfilms.length; i++)
-        {
-            var rentedMovie = rentedfilms[i].filmId;
-            for(i =0; i<json.length; i++)
-            {
-                if (rentedMovie == json[i].id)
-                {
-                    listOfRentedMovies.insertAdjacentHTML("beforeend", "<li>" + json[i].name + " <button id='returnButton' onclick='returnMovie(" + json[i].id +")'>Lämna tillbaka</button></li>")   
-                }
-
-            }
-        }
-        
-    })
-    .catch(err => console.log(err))
-    
-
-}
-
-function getListOfUnverifiedStudios()
-{
-    var listOfStudios = document.getElementById("studioList");
+    page.insertAdjacentHTML("beforeend", '<div id="listOfFilmstudios"><h3>Filmstudior</h3><ul id="filmstudioList"></ul></div>');
 
     fetch('https://localhost:5001/api/filmstudio')
     .then(response => response.json())
     .then(function(json) {
         console.log(json);
+        var filmstudioList = document.getElementById("filmstudioList");
+
         for(i =0; i<json.length; i++)
         {
-            if(!json[i].Verified)
-            {
-                listOfStudios.insertAdjacentHTML("beforeend", "<li>" + json[i].name + "</li> <button onclick='VerifyStudio("+json[i].id +")'>Verifiera</button>")
-            }
+            filmstudioList.insertAdjacentHTML("beforeend", "<li><button id='filmstudioButton' onclick='filmstudioPage("+json[i].id+",\""+json[i].name+"\")'>"+json[i].name+"</button></li>");
+
+
         }
     })
-}
-function VerifyStudio(studioId) {
 
-    var data = {Id: studioId, Name: "Finsta", Password: "1111", Verified: true };
-    fetch('https://localhost:5001/api/filmstudio/' + studioId, {
-        method: "PUT",
-        headers: {
-            "Content-type":'application/json',
-        },
-        body: JSON.stringify(data),
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('Sucess', data)
-    })
-    .catch(err => console.log('Error: ', err))
+    //Lista alla filmklubbar som väntar på verifiering
+    page.insertAdjacentHTML("beforeend",'<div id="verifyFilmstudio"><h3>Verifiera filmstudio</h3><ul id="studioList"></div>');
+    getListOfUnverifiedStudios();
+    
 
 }
+//------------------------------------------------------------------------------------------------------------------------
 
+//                                  MOVIE PAGE
+//------------------------------------------------------------------------------------------------------------------------
 function showMoviePage(movieId, movieName)
 {
     page.innerHTML = "";
@@ -289,30 +212,92 @@ function showMoviePage(movieId, movieName)
     } 
    
 }
-//get alla rentals på alla filmstudios för admin sida
-function getAllRentals()
-{
-    /*
-    var listToPrint = document.getElementById("rentList");
-    var rentList = "";
-    fetch('https://localhost:5001/api/rentedfilm')
+//------------------------------------------------------------------------------------------------------------------------
+
+//                                  STUDIO PAGE
+//------------------------------------------------------------------------------------------------------------------------
+function filmstudioPage(studioId, studioName){
+    page.innerHTML ="";
+
+    page.insertAdjacentHTML("beforeend", "<div id='listOfRentals'><h2>"+studioName+"</h2> <h3>Hyrda filmer</h3></div>");
+
+    //skriv ut gå tillbaka knapp, visa adminpage vid knapptryck
+    page.insertAdjacentHTML("beforeend","<div> </br><button id='goBackButton' onclick='showLoggedinAdminPage()'> Gå tillbaka </button></div>");
+
+    fetch('https://localhost:5001/api/RentedFilm')
     .then(response => response.json())
     .then(function(json){
-        console.log("listToPrint", json);
-        for (i = 0; i<json.length; i++)
+        console.log("printList", json)
+
+        var listOfRentals = document.getElementById("listOfRentals");
+        var rentalsOfThisStudio= json.filter(a => a.studioId == studioId);
+
+        for (i= 0; i<rentalsOfThisStudio.length; i++)
         {
-            if (!json[i].returned)
+
+            printMovieTitle(rentalsOfThisStudio[i].filmId);
+            
+        }
+
+        
+    })
+    .catch(err => console.log(err))
+}
+//------------------------------------------------------------------------------------------------------------------------
+
+//                                  FUNCTIONS
+//------------------------------------------------------------------------------------------------------------------------
+function printMovieTitle(movieId)
+{
+    var listOfRentals = document.getElementById("listOfRentals");
+
+    fetch('https://localhost:5001/api/film/'+ movieId)
+    .then(response => response.json())
+    .then(function(json){
+        console.log("printList", json)
+    
+        listOfRentals.insertAdjacentHTML("beforeend", "<li>"+json.name+"</li>")
+              
+
+    })
+    .catch(err => console.log(err))
+}
+
+function getListOfUnverifiedStudios()
+{
+    var listOfStudios = document.getElementById("studioList");
+
+    fetch('https://localhost:5001/api/filmstudio')
+    .then(response => response.json())
+    .then(function(json) {
+        console.log(json);
+
+        for(i =0; i<json.length; i++)
+        {
+            if(json[i].verified == false)
             {
-                fetch('https://localhost:5001/api/film')
-                .then(response => response.json())
-                .then(function(filmJson){
-                    
-                })
-                listToPrint.insertAdjacentHTML("beforeend", "<li> film: "+ json[i].FilmId + "studio: " + json[i].StudioId  + "</li>")
+                listOfStudios.insertAdjacentHTML("beforeend", "<li>" + json[i].name + "</li> <button onclick='verifyStudio("+json[i].id+",\""+ json[i].name +"\",\""+ json[i].password +"\")'>Verifiera</button>")
             }
         }
     })
-*/
+}
+
+function verifyStudio(studioId, filmId) {
+
+    var data = {Id: studioId, FilmId: filmId, Verified: true };
+    fetch('https://localhost:5001/api/filmstudio/' + studioId, {
+        method: "PUT",
+        headers: {
+            "Content-type":'application/json',
+        },
+        body: JSON.stringify(data),
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Sucess', data)
+    })
+    .catch(err => console.log('Error: ', err))
+
 }
 
 //för att hämta alla movies, skriva ut dom i konsollen och kunna hyra dom.
@@ -386,6 +371,7 @@ function showTrivias(movieId)
     .catch(err => console.log(err))
 
 }
+
 //lägg till ny filmstudio
 function postFilmstudio(studioName, studioPassword) 
 {
