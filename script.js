@@ -66,7 +66,7 @@ function showStartPage()
     getAllMovies();
 
     //Registrera filmstudio
-    page.insertAdjacentHTML("beforeend",'<div id="registerFilmstudio" class="registerFilmstudio"><h2>Registrera filmstudio</h2> Namn <input type="text" id="newUsername"> Lösenord <input type="password" id="newPassword"> <button id="register" onclick="">Registrera</button></div>');
+    page.insertAdjacentHTML("beforeend",'<div id="registerFilmstudio" class="registerFilmstudio"><h2>Registrera filmstudio</h2> Namn <input type="text" id="newUsername"> Lösenord <input type="password" id="newPassword"> Email <input type="text" id="newEmail"> <button id="register" onclick="">Registrera</button></div>');
     name = document.getElementById("newUsername").value;
     userName = document.getElementById("newPassword").value;
 
@@ -75,8 +75,9 @@ function showStartPage()
     registerButton.addEventListener('click', function() {
         userName = document.getElementById("newUsername").value;
         password = document.getElementById("newPassword").value;
+        email = document.getElementById("newEmail").value;
         console.log("knapp tryckt!")
-        postFilmstudio(userName, password);
+        postFilmstudio(userName, password, email);
         page.insertAdjacentHTML("beforeend", '<div><p id="registratedStudio">Studion är nu registrerad! Invänta verifiering. Bekräftelse skickas via mail. </p></div>');
 
     });
@@ -390,7 +391,7 @@ function showTrivias(movieId)
 }
 
 //lägg till ny filmstudio
-function postFilmstudio(studioName, studioPassword) 
+function postFilmstudio(studioName, studioPassword, email) 
 {
     var data = {Name: studioName, Password: studioPassword, Verified: false};
     fetch('https://localhost:5001/api/filmstudio', {
