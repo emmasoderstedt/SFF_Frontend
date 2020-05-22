@@ -281,7 +281,7 @@ function filmstudioPage(studioId, studioName){
     .then(response => response.json())
     .then(function(json){
 
-        var rentalsOfThisStudio= json.filter(a => a.studioId == studioId);
+        var rentalsOfThisStudio= json.filter(a => a.studioId == studioId && a.returned == false);
 
         //går igenom alla hyrningar av aktuell studio
         for (i= 0; i<rentalsOfThisStudio.length; i++)
@@ -463,7 +463,7 @@ function rentMovie(filmid) {
     console.log("renting movie!!", filmid)
     var userId = parseInt(localStorage.getItem("userId"));
 
-    var data = {FilmId: filmid, StudioId: userId};
+    var data = {FilmId: filmid, StudioId: userId, Returned: false};
 
     fetch('https://localhost:5001/api/RentedFilm', {
         method: "POST",
