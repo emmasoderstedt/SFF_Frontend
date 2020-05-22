@@ -1,5 +1,9 @@
 var page = document.getElementById("content");
 var loggedIn;
+if (localStorage.getItem("userId") !== null) 
+{
+    loggedIn=true;
+}
 
 if (localStorage.getItem("userId") !== null) {
     showLoggedinPage();
@@ -49,7 +53,7 @@ function showStartPage()
                 }
                 
                 //gick inloggningen igenom visa logginpage
-                if (localStorage.getItem("userId") !== null) 
+                if (loggedIn) 
                 {
                     showLoggedinPage();
                     
@@ -68,9 +72,7 @@ function showStartPage()
     getAllMovies();
 
     //Registrera filmstudio
-    page.insertAdjacentHTML("beforeend",'<div id="registerFilmstudio" class="registerFilmstudio"><h2>Registrera filmstudio</h2> Namn <input type="text" id="newUsername"> Lösenord <input type="password" id="newPassword"> Email <input type="text" id="newEmail"> <button id="register" onclick="">Registrera</button></div>');
-    name = document.getElementById("newUsername").value;
-    userName = document.getElementById("newPassword").value;
+    page.insertAdjacentHTML("beforeend",'<div id="registerFilmstudio" class="registerFilmstudio"><h2>Registrera filmstudio</h2> Namn <input type="text" id="newUsername"> Lösenord <input type="password" id="newPassword"> Email <input type="text" id="newEmail"> <button id="register">Registrera</button></div>');
 
     var registerButton = document.getElementById("register");
 
@@ -116,7 +118,7 @@ function showLoggedinPage()
     })
 
     //Listar alla filmer och ger möjlighet att hyra
-    page.insertAdjacentHTML("beforeend","<h2> Tillgängliga filmer<h2><div id='filmList'></div>");
+    page.insertAdjacentHTML("beforeend","<h3> Tillgängliga filmer<h3><div id='filmList'></div>");
     getAllMovies();
 }
 //------------------------------------------------------------------------------------------------------------------------
@@ -129,7 +131,7 @@ function showLoggedinAdminPage()
     page.innerHTML = "";
     
     //hälsar välkommen
-    page.insertAdjacentHTML("afterbegin", "<h2>Välkommen Admin</h2>");
+    page.insertAdjacentHTML("afterbegin", "Välkommen Admin");
 
     //logga ut-knapp
     page.insertAdjacentHTML("beforeend", " <div> <button id= 'loggoutAdminButton'>Logga ut</button></div>");
@@ -165,16 +167,36 @@ function showLoggedinAdminPage()
     .then(function(json) {
         console.log(json);
         var listOfStudios = document.getElementById("studioList");
+        var numberOfUnverifiedStudios =0;
 
         for(i =0; i<json.length; i++)
         {
             if(json[i].verified == false)
             {
+                numberOfUnverifiedStudios++;
                 //skriver ut studionamn med verifieringsknapp
                 listOfStudios.insertAdjacentHTML("beforeend", "<li>" + json[i].name + "</li> <button onclick='verifyStudio("+json[i].id+",\""+ json[i].name +"\",\""+ json[i].password +"\")'>Verifiera</button>")
             }
+            
+        }
+        if (numberOfUnverifiedStudios== 0) {
+            listOfStudios.insertAdjacentHTML("beforeend", "<p>Det finns inga studios att verifiera</p>");
         }
     })
+
+    //Lägga till ny film
+    page.insertAdjacentHTML("beforeend",'<div id="addMovie" class="addMovie"><h2>Lägg till ny film</h2> Filmtitel <input type="text" id="newFilmName"> Stock <input type="text" id="newStock"><button id="add">Lägg till</button></div>');
+ 
+    var addButton = document.getElementById("add");
+ 
+    addButton.addEventListener('click', function() {
+        filmName = document.getElementById("newFilmName").value;
+        stock = document.getElementById("newStock").value;
+
+        postMovie(filmName, stock);
+        page.insertAdjacentHTML("beforeend", '<div><p id="addedFilm"> Filmen är nu tillagd! </p></div>');
+ 
+     });
     
 
 }
@@ -399,6 +421,7 @@ function showTrivias(movieId)
 //lägg till ny filmstudio
 function postFilmstudio(studioName, studioPassword, email) 
 {
+
     var data = {Name: studioName, Password: studioPassword, Verified: false};
     fetch('https://localhost:5001/api/filmstudio', {
         method: "POST",
@@ -413,6 +436,26 @@ function postFilmstudio(studioName, studioPassword, email)
         })
         .catch(err => console.log('Error: ', err))
 
+}
+
+//lägg till ny film
+function postMovie(filmName, stock) {
+
+    var intStock = parseInt(stock);
+
+    var data = {Name: filmName, Stock: intStock};
+    fetch('https://localhost:5001/api/film', {
+        method: "POST",
+        headers: {
+            "Content-type":'application/json',
+        },
+        body: JSON.stringify(data),
+    })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Sucess', data)
+        })
+        .catch(err => console.log('Error: ', err))
 }
 
 //hyr film
