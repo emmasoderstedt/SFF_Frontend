@@ -137,7 +137,7 @@ function showLoggedinAdminPage()
     })
 
     //Lista alla uthyrningar
-    page.insertAdjacentHTML("beforeend", '<div id="listOfFilmstudios"><h3>Filmstudior</h3><ul id="filmstudioList"></ul></div>');
+    page.insertAdjacentHTML("beforeend", '<div id="listOfFilmstudios"><h3>Filmstudio</h3><ul id="filmstudioList"></ul></div>');
 
     fetch('https://localhost:5001/api/filmstudio')
     .then(response => response.json())
@@ -155,7 +155,21 @@ function showLoggedinAdminPage()
 
     //Lista alla filmklubbar som väntar på verifiering
     page.insertAdjacentHTML("beforeend",'<div id="verifyFilmstudio"><h3>Verifiera filmstudio</h3><ul id="studioList"></div>');
-    getListOfUnverifiedStudios();
+
+    fetch('https://localhost:5001/api/filmstudio')
+    .then(response => response.json())
+    .then(function(json) {
+        console.log(json);
+        var listOfStudios = document.getElementById("studioList");
+
+        for(i =0; i<json.length; i++)
+        {
+            if(json[i].verified == false)
+            {
+                listOfStudios.insertAdjacentHTML("beforeend", "<li>" + json[i].name + "</li> <button onclick='verifyStudio("+json[i].id+",\""+ json[i].name +"\",\""+ json[i].password +"\")'>Verifiera</button>")
+            }
+        }
+    })
     
 
 }
@@ -163,7 +177,8 @@ function showLoggedinAdminPage()
 
 //                                  MOVIE PAGE
 //------------------------------------------------------------------------------------------------------------------------
-function showMoviePage(movieId, movieName)
+
+function showMoviePage(movieId, movieName, stock)
 {
     page.innerHTML = "";
 
@@ -177,8 +192,6 @@ function showMoviePage(movieId, movieName)
         //skriv ut gå tillbaka knapp, visa loggedinpage vid knapptryck
         page.insertAdjacentHTML("beforeend","<div> </br><button id='goBackButton' onclick='showLoggedinPage()'> Gå tillbaka </button></div>");
         
-        //Skriver ut hyrknapp
-        page.insertAdjacentHTML("beforeend", "<button id='rentButton' onclick='rentMovie("+movieId+")'>Hyr</button>");
         
         fetch('https://localhost:5001/api/rentedfilm')
         .then(response => response.json())
@@ -186,7 +199,18 @@ function showMoviePage(movieId, movieName)
             
             var studioId = localStorage.getItem("userId");
             console.log(json);
+            var numberOfRentals = json.filter(a => a.filmId == movieId && a.returned == false).length;
             var activeRentals = json.filter(a => a.studioId == studioId && a.filmId == movieId && a.returned == false);
+            
+            //Skriver ut hyrknapp om stock finns annars meddelande om att den inte finns i lager
+            if(numberOfRentals <stock)
+            {
+                page.insertAdjacentHTML("beforeend", "<button id='rentButton' onclick='rentMovie("+movieId +")'>Hyr</button>");
+            }
+            else 
+            {
+                page.insertAdjacentHTML("beforeend", "Filmen är tyvärr inte tillgänglig att hyra");
+            }
             
             //om inloggad studio hyrt filmen 1 gång eller fler
             if (activeRentals.length>0)
@@ -216,6 +240,7 @@ function showMoviePage(movieId, movieName)
 
 //                                  STUDIO PAGE
 //------------------------------------------------------------------------------------------------------------------------
+
 function filmstudioPage(studioId, studioName){
     page.innerHTML ="";
 
@@ -227,9 +252,9 @@ function filmstudioPage(studioId, studioName){
     fetch('https://localhost:5001/api/RentedFilm')
     .then(response => response.json())
     .then(function(json){
-        console.log("printList", json)
+        console.log("rentlist", json)
 
-        var listOfRentals = document.getElementById("listOfRentals");
+        //var listOfRentals = document.getElementById("listOfRentals"); används ej?
         var rentalsOfThisStudio= json.filter(a => a.studioId == studioId);
 
         for (i= 0; i<rentalsOfThisStudio.length; i++)
@@ -254,7 +279,7 @@ function printMovieTitle(movieId)
     fetch('https://localhost:5001/api/film/'+ movieId)
     .then(response => response.json())
     .then(function(json){
-        console.log("printList", json)
+        console.log("movies", json)
     
         listOfRentals.insertAdjacentHTML("beforeend", "<li>"+json.name+"</li>")
               
@@ -263,28 +288,10 @@ function printMovieTitle(movieId)
     .catch(err => console.log(err))
 }
 
-function getListOfUnverifiedStudios()
-{
-    var listOfStudios = document.getElementById("studioList");
+function verifyStudio(studioId, studioName, studioPassword) {
+    var verifyFilmstudio =document.getElementById("verifyFilmstudio");
 
-    fetch('https://localhost:5001/api/filmstudio')
-    .then(response => response.json())
-    .then(function(json) {
-        console.log(json);
-
-        for(i =0; i<json.length; i++)
-        {
-            if(json[i].verified == false)
-            {
-                listOfStudios.insertAdjacentHTML("beforeend", "<li>" + json[i].name + "</li> <button onclick='verifyStudio("+json[i].id+",\""+ json[i].name +"\",\""+ json[i].password +"\")'>Verifiera</button>")
-            }
-        }
-    })
-}
-
-function verifyStudio(studioId, filmId) {
-
-    var data = {Id: studioId, FilmId: filmId, Verified: true };
+    var data = {Id: studioId, Name: studioName, Password: studioPassword, Verified: true };
     fetch('https://localhost:5001/api/filmstudio/' + studioId, {
         method: "PUT",
         headers: {
@@ -292,17 +299,25 @@ function verifyStudio(studioId, filmId) {
         },
         body: JSON.stringify(data),
     })
-    .then(response => response.json())
-    .then(data => {
-        console.log('Sucess', data)
-    })
+    .then(data =>
+        {
+            console.log('Success:', data);
+
+            verifyFilmstudio.insertAdjacentHTML("beforeend", "<p>Studion är verifierad</p>");
+
+            
+        })
     .catch(err => console.log('Error: ', err))
+
+
+
 
 }
 
-//för att hämta alla movies, skriva ut dom i konsollen och kunna hyra dom.
+//för att hämta alla tillgängliga movies, skriva ut dom i konsollen och kunna hyra dom.
 function getAllMovies() 
 {
+
     var printList = document.getElementById("filmList");
 
     fetch('https://localhost:5001/api/film')
@@ -313,8 +328,10 @@ function getAllMovies()
         
         for (i =0; i<json.length; i++)
         {
+           
+            printList.insertAdjacentHTML("beforeend", "<li><button id='movieButton' onclick='showMoviePage("+json[i].id+",\""+ json[i].name +"\"," + json[i].stock +")'>" + json[i].name + "</button></li>") 
+    
 
-                printList.insertAdjacentHTML("beforeend", "<li><button id='movieButton' onclick='showMoviePage("+json[i].id+",\""+ json[i].name +"\")'>" + json[i].name + "</button></li>") 
 
         }
     })
@@ -417,7 +434,7 @@ function rentMovie(filmid) {
 
 
 }
-
+//lämna tillbaka film
 function returnMovie(rentedfilmId, filmId, studioId){
     console.log("lämnar tillbaka film");
     var data = {Id: rentedfilmId, FilmId: filmId, StudioId: studioId, Returned: true}
